@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Список клиентов</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+</head>
+<body>
+    <h2>Список клиентов</h2>
+    <form name="clientForm">
+        <input type="hidden" name="id" value="0" />
+        <div class="form-group">
+            <label for="name">Имя:</label>
+            <input class="form-control" name="name" />
+        </div>
+        <div class="form-group">
+            <label for="surname">Фамилия:</label>
+            <input class="form-control" name="surname" />
+        </div>
+        <div class="form-group">
+            <label for="middleName">Отчество:</label>
+            <input class="form-control" name="middleName" />
+        </div>
+        <div class="form-group">
+            <label for="dateOfBirth">Дата рождения (месяц/число/год "05/23/1972"):</label>
+            <input class="form-control" name="dateOfBirth" />
+        </div>
+        <div class="form-group">
+            <label for="deposit">Депозит:</label>
+            <input class="form-control" name="deposit" />
+        </div>
+
+        <div class="panel-body">
+            <button type="submit" class="btn btn-sm btn-primary">Сохранить клиента</button>
+            <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+        </div>
+    </form>
+
+    <table class="table table-condensed table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Отчество</th>
+                <th>Дата рождения</th>
+                <th>Баланс, руб</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Изменение баланса</h2>
+    <form id="changeAmountForm">
+        <input type="hidden" name="id" value="0" />
+        <div class="form-group">
+            <label for="clientId">Id клиента:</label>
+            <input class="form-control" name="clientId" />
+        </div>
+        <div class="form-group">
+            <label for="amount">Начислить/списать руб. (например:"+/- 2000"):</label>
+            <input class="form-control" name="amount" />
+        </div>
+
+
+        <div class="panel-body">
+            <button type="submit" id ="btnamount"class="btn btn-sm btn-primary" onClick="refreshPage()">Изменить баланс</button>
+        </div>
+    </form>
+
+    <script>
+        // Получение всех пользователей
+        function GetClients() {
+            $.ajax({
+                url: '/api/clients',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (clients) {
+                    var rows = "";
+                    $.each(clients, function (index, client) {
+                        // добавляем полученные элементы в таблицу
+                        rows += row(client);
+                    })
+                    $("table tbody").append(rows);
+                }
+            });
+        }
+        // Получение одного пользователя
+        function GetClient(id) {
+            $.ajax({
+                url: '/api/clients/' + id,
+                type: 'GET',
+                contentType: "application/json",
+                success: function (client) {
+                    var form = document.forms["clientForm"];
+                    form.elements["id"].value = client.id;
+                    form.elements["name"].value = client.name;
+                    form.elements["surname"].value = client.surname;
+                    form.elements["middleName"].value = client.middleName;
+                    form.elements["dateOfBirth"].value = client.dateOfBirth;
+                    form.elements["deposit"].value = client.deposit;
+                }
+            });
+        }
+        // Добавление пользователя
+        function CreateClient(clientName, clientSurname, clientMiddleName, clientDateOfBirth, clientDeposit) {
+            $.ajax({
+                url: "api/clients",
+                contentType: "application/json",
+                method: "POST",
+                data: JSON.stringify({
+                    name: clientName,
+                    surname: clientSurname,
+                    middleName: clientMiddleName,
+                    dateOfBirth: clientDateOfBirth,
+                    deposit: clientDeposit
+                }),
+                success: function (client) {
+                    reset();
+                    $("table tbody").append(row(client));
+                }
+            })
+        }
+        // Изменение пользователя
+        function EditClient(clientId, clientName, clientSurname, clientMiddleName, clientDateOfBirth, clientDeposit) {
+            $.ajax({
+                url: "api/clients",
+                contentType: "application/json",
+                method: "PUT",
+                data: JSON.stringify({
+                    id: clientId,
+                    name: clientName,
+                    surname: clientSurname,
+                    middleName: clientMiddleName,
+                    dateOfBirth: clientDateOfBirth,
+                    deposit: clientDeposit
+                }),
+                success: function (client) {
+                    reset();
+                    $("tr[data-rowid='" + client.id + "']").replaceWith(row(client));
+                }
+            })
+        }
+
+        // сброс формы
+        function reset() {
+            var form = document.forms["clientForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+
+        // Удаление пользователя
+        function DeleteClient(id) {
+            $.ajax({
+                url: "api/clients/" + id,
+                contentType: "application/json",
+                method: "DELETE",
+                success: function (client) {
+                    $("tr[data-rowid='" + client.id + "']").remove();
+                }
+            })
+        }
+        // создание строки для таблицы
+        var row = function (client) {
+            return "<tr data-rowid='" + client.id + "'><td>" + client.id + "</td>" +
+                "<td>" + client.name + "</td> <td>" + client.surname + "</td> <td>" +
+                client.middleName + "</td> <td>" + client.dateOfBirth + "</td> <td>"
+                + client.deposit + "</td>" +
+                "<td><a class='editLink' data-id='" + client.id + "'>Изменить</a> | " +
+                "<a class='removeLink' data-id='" + client.id + "'>Удалить</a></td></tr>";
+        }
+        // сброс значений формы
+        $("#reset").click(function (e) {
+
+            e.preventDefault();
+            reset();
+        })
+
+        // отправка формы
+        $("form").submit(function (e) {
+            //
+            var id = this.elements["id"].value;
+            var name = this.elements["name"].value;
+            var surname = this.elements["surname"].value;
+            var middleName = this.elements["middleName"].value;
+            var dateOfBirth = this.elements["dateOfBirth"].value;
+            var deposit = this.elements["deposit"].value;
+            if (id == 0)
+                CreateClient(name, surname, middleName, dateOfBirth, deposit);
+            else
+                EditClient(id, name, surname, middleName, dateOfBirth, deposit);  
+            e.preventDefault();
+        });
+
+        //Внести изменения на счет 
+        $("#btnamount").click(function () {
+
+            //получаем данные формы
+            var changeAmountForm = document.forms["changeAmountForm"];
+            var clientId = changeAmountForm.elements["clientId"].value;
+            var amount = changeAmountForm.elements["amount"].value;
+
+            //cериализуем данные в json
+            var change = JSON.stringify({ clientId: clientId, amount: amount });
+            var request = new XMLHttpRequest();
+
+            //посылаем запрос на адрес "/user"
+            request.open("PUT", "https://localhost:44372/api/clients/" + clientId + "?change=" + amount, true);
+            request.setRequestHeader("Content-Type", "application/json");
+            request.send();
+            //e.preventDefault();
+            //reset();
+        })
+         
+        // нажимаем на ссылку Изменить
+        $("body").on("click", ".editLink", function () {
+            var id = $(this).data("id");
+            GetClient(id);
+        })
+        // нажимаем на ссылку Удалить
+        $("body").on("click", ".removeLink", function () {
+            var id = $(this).data("id");
+            DeleteClient(id);
+        })
+
+        // загрузка пользователей
+        GetClients();
+    </script>
+</body>
+</html>
